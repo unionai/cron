@@ -97,13 +97,13 @@ func TestNoEntries(t *testing.T) {
 // Start, stop, then add an entry. Verify entry doesn't run.
 func TestStopCausesJobsToNotRun(t *testing.T) {
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
+	wg.Add(2)
 
 	cron := newWithSeconds()
 	cron.Start()
 	cron.Stop()
 	cron.AddFunc("* * * * * ?", func() { wg.Done() })
-
+	cron.AddTimedFunc("* * * * * ?", func(time time.Time) { wg.Done() })
 	select {
 	case <-time.After(OneSecond):
 		// No job ran!
@@ -115,10 +115,11 @@ func TestStopCausesJobsToNotRun(t *testing.T) {
 // Add a job, start cron, expect it runs.
 func TestAddBeforeRunning(t *testing.T) {
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
+	wg.Add(2)
 
 	cron := newWithSeconds()
 	cron.AddFunc("* * * * * ?", func() { wg.Done() })
+	cron.AddTimedFunc("* * * * * ?", func(time time.Time) { wg.Done() })
 	cron.Start()
 	defer cron.Stop()
 
@@ -133,12 +134,13 @@ func TestAddBeforeRunning(t *testing.T) {
 // Start cron, add a job, expect it runs.
 func TestAddWhileRunning(t *testing.T) {
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
+	wg.Add(2)
 
 	cron := newWithSeconds()
 	cron.Start()
 	defer cron.Stop()
 	cron.AddFunc("* * * * * ?", func() { wg.Done() })
+	cron.AddTimedFunc("* * * * * ?", func(time time.Time) { wg.Done() })
 
 	select {
 	case <-time.After(OneSecond):
@@ -155,9 +157,10 @@ func TestAddWhileRunningWithDelay(t *testing.T) {
 	time.Sleep(5 * time.Second)
 	var calls int64
 	cron.AddFunc("* * * * * *", func() { atomic.AddInt64(&calls, 1) })
+	cron.AddTimedFunc("* * * * * ?", func(time time.Time) { atomic.AddInt64(&calls, 1) })
 
 	<-time.After(OneSecond)
-	if atomic.LoadInt64(&calls) != 1 {
+	if atomic.LoadInt64(&calls) != 2 {
 		t.Errorf("called %d times, expected 1\n", calls)
 	}
 }
@@ -165,10 +168,12 @@ func TestAddWhileRunningWithDelay(t *testing.T) {
 // Add a job, remove a job, start cron, expect nothing runs.
 func TestRemoveBeforeRunning(t *testing.T) {
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
+	wg.Add(2)
 
 	cron := newWithSeconds()
 	id, _ := cron.AddFunc("* * * * * ?", func() { wg.Done() })
+	cron.Remove(id)
+	id, _ = cron.AddTimedFunc("* * * * * ?", func(time time.Time) { wg.Done() })
 	cron.Remove(id)
 	cron.Start()
 	defer cron.Stop()
@@ -184,14 +189,15 @@ func TestRemoveBeforeRunning(t *testing.T) {
 // Start cron, add a job, remove it, expect it doesn't run.
 func TestRemoveWhileRunning(t *testing.T) {
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
+	wg.Add(2)
 
 	cron := newWithSeconds()
 	cron.Start()
 	defer cron.Stop()
 	id, _ := cron.AddFunc("* * * * * ?", func() { wg.Done() })
 	cron.Remove(id)
-
+	id, _ = cron.AddTimedFunc("* * * * * ?", func(time time.Time) { wg.Done() })
+	cron.Remove(id)
 	select {
 	case <-time.After(OneSecond):
 	case <-wait(wg):
@@ -202,10 +208,11 @@ func TestRemoveWhileRunning(t *testing.T) {
 // Test timing with Entries.
 func TestSnapshotEntries(t *testing.T) {
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
+	wg.Add(2)
 
 	cron := New()
 	cron.AddFunc("@every 2s", func() { wg.Done() })
+	cron.AddTimedFunc("@every 2s", func(time time.Time) { wg.Done() })
 	cron.Start()
 	defer cron.Stop()
 

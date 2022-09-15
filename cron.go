@@ -210,7 +210,7 @@ func (c *Cron) Schedule(schedule Schedule, cmd Job) EntryID {
 	return entry.ID
 }
 
-// ScheduleTimedJob adds a Job to the Cron to be run on the given schedule.
+// ScheduleTimedJob adds a Job to the Cron to be run on the given schedule.Optionally passing startTime
 // The job is wrapped with the configured Chain.
 func (c *Cron) ScheduleTimedJob(schedule Schedule, cmd TimedJob, startTime time.Time) EntryID {
 	c.runningMu.Lock()
